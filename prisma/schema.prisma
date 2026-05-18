@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DriverStatus {
+  free
+  busy
+  offline
+}
+
+enum OrderStatus {
+  queued
+  accepted
+  active
+  completed
+  canceled
+}
+
+enum Tariff {
+  economy
+  comfort
+  business
+}
+
+enum PaymentMethod {
+  balance
+  cash
+  transfer
+}
+
+model Passenger {
+  id        String   @id @default(cuid())
+  name      String
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Driver {
+  id                   String       @id @default(cuid())
+  name                 String
+  rating               Float        @default(5)
+  status               DriverStatus @default(offline)
+  lat                  Float?
+  lng                  Float?
+  lastSeenAt           DateTime?
+  idleSince            DateTime?
+  balance              Float        @default(0)
+  currentShiftEarnings Float        @default(0)
+  currentOrderId       String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  orders               Order[]
+  points               TrackingPoint[]
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  passengerId    String
+  driverId       String?
+  pickupLat      Float
+  pickupLng      Float
+  destLat        Float
+  destLng        Float
+  tariff         Tariff
+  paymentMethod  PaymentMethod
+  status         OrderStatus   @default(queued)
+  estimatedPrice Float         @default(0)
+  finalPrice     Float?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  distanceKm     Float         @default(0)
+  durationMin    Float         @default(0)
+  livePrice      Float         @default(0)
+  routeHistory   Json?
+
+  passenger Passenger @relation(fields: [passengerId], references: [id])
+  driver    Driver?   @relation(fields: [driverId], references: [id])
+  points    TrackingPoint[]
+}
+
+model TrackingPoint {
+  id        String   @id @default(cuid())
+  orderId   String?
+  driverId  String?
+  lat       Float
+  lng       Float
+  speedKmh  Float?
+  source    String
+  createdAt DateTime @default(now())
+
+  order  Order?  @relation(fields: [orderId], references: [id])
+  driver Driver? @relation(fields: [driverId], references: [id])
+}
+
+model TariffConfig {
+  id        String @id
+  baseFare  Float
+  perKm     Float
+  perMinute Float
+  updatedAt DateTime @updatedAt
+}
+
+model KtodConfig {
+  id        String @id
+  weekdayDay Float @default(1.0)
+  weekdayNight Float @default(1.5)
+  weekendDay Float @default(1.5)
+  weekendNightHoliday Float @default(2.0)
+  updatedAt DateTime @updatedAt
+}
